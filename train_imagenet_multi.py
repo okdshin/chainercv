@@ -7,7 +7,7 @@ import chainer
 from chainer import iterators
 from chainer.links import Classifier
 from chainer.optimizer import WeightDecay
-from chainer.optimizers import RMSprop
+from chainer.optimizers import RMSpropGraves
 from chainer import training
 from chainer.training import extensions
 
@@ -156,7 +156,7 @@ def main():
         n_processes=args.loaderjob)
 
     optimizer = chainermn.create_multi_node_optimizer(
-        RMSprop(lr=lr, momentum=args.momentum, alpha=args.alpha), comm)
+        RMSpropGraves(lr=lr, momentum=args.momentum, alpha=args.alpha), comm)
     optimizer.setup(model)
     for param in model.params():
         if param.name not in ('beta', 'gamma'):
