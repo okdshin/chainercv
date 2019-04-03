@@ -91,6 +91,7 @@ def main():
     parser.add_argument('--weight_decay', type=float, default=0.00004)
     parser.add_argument('--out', type=str, default='result')
     parser.add_argument('--epoch', type=int, default=90)
+    parser.add_argument('--trial', action='store_true')
     args = parser.parse_args()
 
     # https://docs.chainer.org/en/stable/chainermn/tutorial/tips_faqs.html#using-multiprocessiterator
@@ -133,10 +134,14 @@ def main():
     val_data = TransformDataset(val_data, ('img', 'label'),
                                 ValTransform(extractor.mean))
     print('finished loading dataset')
-
     if comm.rank == 0:
         train_indices = np.arange(len(train_data))
         val_indices = np.arange(len(val_data))
+
+        if args.trial:
+            train_indices = train_indices[:max(len(train_data) // 1000, 10)]
+            val_indices = train_indices[:max(len(val_data) // 1000, 10)]
+
     else:
         train_indices = None
         val_indices = None
@@ -171,7 +176,8 @@ def main():
 
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    trainer.extend(extensions.ExponentialShift('lr', 0.98), trigger=(1, 'epoch'))
+    trainer.extend(
+        extensions.ExponentialShift('lr', 0.98), trigger=(1, 'epoch'))
     """
     @make_shift('lr')
     def warmup_and_exponential_shift(trainer):
