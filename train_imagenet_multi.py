@@ -8,6 +8,7 @@ from chainer import iterators
 from chainer.links import Classifier
 from chainer.optimizer import WeightDecay
 from chainer.optimizers import RMSpropGraves
+from chainer import serializers
 from chainer import training
 from chainer.training import extensions
 
@@ -92,6 +93,7 @@ def main():
     parser.add_argument('--out', type=str, default='result')
     parser.add_argument('--epoch', type=int, default=90)
     parser.add_argument('--trial', action='store_true')
+    parser.add_argument('--resume')
     args = parser.parse_args()
 
     # https://docs.chainer.org/en/stable/chainermn/tutorial/tips_faqs.html#using-multiprocessiterator
@@ -212,10 +214,11 @@ def main():
     if comm.rank == 0:
         trainer.extend(
             chainer.training.extensions.observe_lr(), trigger=log_interval)
+        trainer.extend(extensions.snapshot(), trigger=(args.epoch/100, 'epoch'))
         trainer.extend(
             extensions.snapshot_object(extractor,
                                        'snapshot_model_{.updater.epoch}.npz'),
-            trigger=(args.epoch, 'epoch'))
+            trigger=(args.epoch/100, 'epoch'))
         trainer.extend(extensions.LogReport(trigger=log_interval))
         trainer.extend(
             extensions.PrintReport([
@@ -225,6 +228,9 @@ def main():
             ]),
             trigger=print_interval)
         trainer.extend(extensions.ProgressBar(update_interval=10))
+
+    if args.resume:
+        serializers.load_npz(args.resume, trainer, strict=False)
 
     trainer.run()
 
